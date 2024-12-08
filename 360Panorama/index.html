@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="node_modules\aframe\dist\aframe-master.js"></script>
+    <script src="https://unpkg.com/aframe-template-component@3.x.x/dist/aframe-template-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-layout-component@5.x.x/dist/aframe-layout-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-event-set-component@5.x.x/dist/aframe-event-set-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-proxy-event-component@2.1.0/dist/aframe-proxy-event-component.min.jss"></script>
+
+
+    <!-- Interaction Logic -->
+    <script>
+        AFRAME.registerComponent("link-handler", {
+          init: function () {
+            const el = this.el;
+    
+            // Set up geometry and material from data attributes
+            const dataSrc = el.getAttribute("data-src");
+            const dataThumb = el.getAttribute("data-thumb");
+            const dataShape = el.getAttribute("data-shape");
+    
+            if (dataSrc && dataThumb) {
+              el.setAttribute("geometry", "primitive: plane; height: 1; width: 1");
+              el.setAttribute("material", `shader: flat; src: ${dataThumb}; opacity: 0.6; transparent: true`);
+            }
+    
+            // Handle click interaction
+            el.addEventListener("click", () => {
+              const sky = document.querySelector("#image-360");
+                // Play the click sound
+                const clickSound = document.querySelector("#click-sound");
+                    clickSound.play();
+              // Update the skybox
+              sky.setAttribute("material", "src: #"); // Temporarily reset skybox material
+              sky.setAttribute("src", dataSrc);
+            //   setTimeout(() => {
+            //      // Set new skybox image
+            //   }, 100);
+    
+              // Hide all shapes
+              document.querySelectorAll("#sphere, #pyramid, #cube").forEach((shape) => {
+                shape.setAttribute("visible", "false");
+                shape.removeAttribute("animation"); // Remove previous animation to reset
+              });
+    
+              // Show and animate the corresponding shape
+              if (dataShape) {
+                const shape = document.querySelector(dataShape);
+                shape.setAttribute("visible", "true");
+                shape.setAttribute("position", el.getAttribute("position"));
+
+                // Set up the circular movement
+                shape.setAttribute("link-shape", { center: el.getAttribute("position") });
+                }
+            });
+          }
+        });
+        
+
+    AFRAME.registerComponent("link-shape", {
+      schema: {
+        center: { type: "vec3" }, // Center of rotation (link panel)
+      },
+
+      init: function () {
+        this.angle = 0; // Initial angle
+        this.radius = 0.7; // Radius of the revolution
+      },
+
+      tick: function (time, timeDelta) {
+        this.angle += 0.5; // Speed of revolution (adjust this value to control speed)
+        if (this.angle >= 360) {
+          this.angle = 0;
+        }
+
+        const x = this.data.center.x + this.radius * Math.cos(THREE.MathUtils.degToRad(this.angle));
+        const z = this.data.center.z + this.radius * Math.sin(THREE.MathUtils.degToRad(this.angle));
+
+        // Update the position of the shape to revolve around the link panel
+        this.el.setAttribute("position", `${x} ${this.data.center.y} ${z}`);
+      },
+    });
+
+      </script>
+  </head>
+  <body>
+    <a-scene>
+      <!-- Assets -->
+      <a-assets>
+        <audio id="click-sound" src="https://cdn.aframe.io/360-image-gallery-boilerplate/audio/click.ogg"></audio>
+        <img id="Classroom" src="classroom.jpg">
+        <img id="Piata Traian" src="piata_traian.jpg">
+        <img id="city-thumb" src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/thumb-city.jpg">
+        <img id="Bastion" src="Bastion.jpg">
+      </a-assets>
+
+      <!-- Sky with fade animations -->
+      <a-sky
+        id="image-360"
+        src="#Classroom"
+        animation__fade="property: components.material.material.color; type: color; from: #FFF; to: #000; dur: 300; startEvents: fade"
+        animation__fadeback="property: components.material.material.color; type: color; from: #000; to: #FFF; dur: 300; startEvents: fadeback">
+      </a-sky>
+
+        <!-- Rotating Shapes -->
+        <a-sphere id="sphere" radius="0.2" material="color: red" visible="true" link-shape="center: -2 1 -3"></a-sphere>
+        <a-entity id="pyramid" geometry="primitive: cone; radiusBottom: 0.2; radiusTop: 0; height: 0.4" material="color: blue" visible="false"></a-entity>
+        <a-box id="cube" width="0.2" height="0.2" depth="0.2" material="color: green" visible="false"></a-box>
+
+        <!-- Links -->
+
+        <a-entity link-handler class="link" data-src="#Classroom" data-thumb="#city-thumb" data-shape="#sphere" position="-2 1 -3">
+            <a-text value="Classroom" position="0 0.7 0" color="#FFF" align="center" width="4"></a-text>
+        </a-entity>
+        
+        <a-entity link-handler class="link" data-src="#Piata Traian" data-thumb="#city-thumb" data-shape="#pyramid" position="0 1 -3">
+            <a-text value="Piata Traian" position="0 0.7 0" color="#FFF" align="center" width="4"></a-text>
+        </a-entity>
+
+        <a-entity link-handler class="link" data-src="#Bastion" data-thumb="#city-thumb" data-shape="#cube" position="2 1 -3">
+            <a-text value="Bastion" position="0 0.7 0" color="#FFF" align="center" width="4"></a-text>
+        </a-entity>
+
+
+      <!-- Camera and Cursor -->
+      <a-camera
+        id="camera"
+        look-controls="pointerLockEnabled: false; enabled: true;"
+        wasd-controls="enabled: false">
+        <a-cursor
+          id="cursor"
+          animation__click="property: scale; from: 0.1 0.1 0.1; to: 1 1 1; easing: easeInCubic; dur: 150; startEvents: click"
+          animation__clickreset="property: scale; to: 0.1 0.1 0.1; dur: 1; startEvents: animationcomplete__click"
+          animation__fusing="property: scale; from: 1 1 1; to: 0.1 0.1 0.1; easing: easeInCubic; dur: 150; startEvents: fusing">
+        </a-cursor>
+      </a-camera>
+    </a-scene>
+  </body>
+</html>
